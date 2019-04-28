@@ -149,13 +149,6 @@ class MultiPing(object):
         self._receive_has_been_called = False
         self._ipv6_address_present    = False
 
-<<<<<<< HEAD
-        # use pid as identifier to filter receive pack from different	
-        # process echo	
-        self.ident = os.getpid() & 0xffff
-
-=======
->>>>>>> 668f5b333d902f3642cdb95ea80d68baf86a3bdd
         # Open an ICMP socket, if we weren't provided with one already
         if sock:
             self._sock = sock
@@ -415,28 +408,15 @@ class MultiPing(object):
 
                         pkt_id = (pkt[_ICMPV6_ID_OFFSET] << 8) + \
                             pkt[_ICMPV6_ID_OFFSET + 1]
-<<<<<<< HEAD
-                        pkt_ident = (pkt[_ICMPV6_IDENT_OFFSET] << 8) + \	
-                            pkt[_ICMPV6_IDENT_OFFSET + 1]
-=======
->>>>>>> 668f5b333d902f3642cdb95ea80d68baf86a3bdd
                         payload = pkt[_ICMPV6_PAYLOAD_OFFSET:]
 
                     elif pkt[_ICMP_HDR_OFFSET] == _ICMP_ECHO_REPLY:
 
                         pkt_id = (pkt[_ICMP_ID_OFFSET] << 8) + \
                             pkt[_ICMP_ID_OFFSET + 1]
-<<<<<<< HEAD
-                        pkt_ident = (pkt[_ICMP_IDENT_OFFSET] << 8) + \	
-                            pkt[_ICMP_IDENT_OFFSET + 1]
-                        payload = pkt[_ICMP_PAYLOAD_OFFSET:]
-
-                    if pkt_ident == self.ident and pkt_id in self._remaining_ids:
-=======
                         payload = pkt[_ICMP_PAYLOAD_OFFSET:]
 
                     if pkt_id in self._remaining_ids:
->>>>>>> 668f5b333d902f3642cdb95ea80d68baf86a3bdd
                         # The sending timestamp was encoded in the echo request
                         # body and is now returned to us in the response. Note
                         # that network byte order doesn't matter here, since we
