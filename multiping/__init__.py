@@ -17,6 +17,7 @@ limitations under the License.
 
 __version__ = "1.1.1"
 
+import os
 import socket
 import struct
 import time
@@ -149,6 +150,10 @@ class MultiPing(object):
         self._receive_has_been_called = False
         self._ipv6_address_present    = False
 
+        # use pid as identifier to filter receive pack from different
+        # process echo
+        self.ident = os.getpid() & 0xffff
+
         # Open an ICMP socket, if we weren't provided with one already
         if sock:
             self._sock = sock
@@ -226,7 +231,7 @@ class MultiPing(object):
         dummy_header = bytearray(
                             struct.pack(_ICMP_HDR_PACK_FORMAT,
                                         icmp_echo_request, 0, 0,
-                                        pkt_id, 0))
+                                        pkt_id, self.ident))
 
         # Calculate the checksum over the combined dummy header and payload
         checksum = self._checksum(dummy_header + payload)
@@ -237,7 +242,7 @@ class MultiPing(object):
         real_header = bytearray(
                             struct.pack(_ICMP_HDR_PACK_FORMAT,
                                         icmp_echo_request, 0, checksum,
-                                        pkt_id, 0))
+                                        pkt_id, self.ident))
 
         # Full packet consists of header plus payload
         full_pkt = real_header + payload
@@ -408,15 +413,19 @@ class MultiPing(object):
 
                         pkt_id = (pkt[_ICMPV6_ID_OFFSET] << 8) + \
                             pkt[_ICMPV6_ID_OFFSET + 1]
+                        pkt_ident = (pkt[_ICMPV6_IDENT_OFFSET] << 8) + \
+                            pkt[_ICMPV6_IDENT_OFFSET + 1]
                         payload = pkt[_ICMPV6_PAYLOAD_OFFSET:]
 
                     elif pkt[_ICMP_HDR_OFFSET] == _ICMP_ECHO_REPLY:
 
                         pkt_id = (pkt[_ICMP_ID_OFFSET] << 8) + \
                             pkt[_ICMP_ID_OFFSET + 1]
+                        pkt_ident = (pkt[_ICMP_IDENT_OFFSET] << 8) + \
+                            pkt[_ICMP_IDENT_OFFSET + 1]
                         payload = pkt[_ICMP_PAYLOAD_OFFSET:]
 
-                    if pkt_id in self._remaining_ids:
+                    if pkt_ident == self.ident and pkt_id in self._remaining_ids:
                         # The sending timestamp was encoded in the echo request
                         # body and is now returned to us in the response. Note
                         # that network byte order doesn't matter here, since we
@@ -492,3 +501,4 @@ def multi_ping(dest_addrs, timeout, retry=0, ignore_lookup_errors=False):
         retry_count += 1
 
     return results, no_results
+
