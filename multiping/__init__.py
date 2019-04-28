@@ -411,6 +411,7 @@ class MultiPing(object):
 
                 try:
                     pkt_id = None
+                    pkt_ident = None
                     if pkt[_ICMPV6_HDR_OFFSET] == _ICMPV6_ECHO_REPLY:
 
                         pkt_id = (pkt[_ICMPV6_ID_OFFSET] << 8) + \
