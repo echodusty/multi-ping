@@ -15,9 +15,8 @@ limitations under the License.
 
 """
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
-import os
 import socket
 import struct
 import time
@@ -33,14 +32,12 @@ _ICMP_HDR_PACK_FORMAT = "!BBHHH"
 # Some offsets we use when extracting data from the header
 _ICMP_HDR_OFFSET       = 20
 _ICMP_ID_OFFSET        = _ICMP_HDR_OFFSET + 4
-_ICMP_IDENT_OFFSET     = _ICMP_HDR_OFFSET + 6
 _ICMP_PAYLOAD_OFFSET   = _ICMP_HDR_OFFSET + 8
 _ICMP_ECHO_REQUEST     = 8
 _ICMP_ECHO_REPLY       = 0
 
 _ICMPV6_HDR_OFFSET     = 0
 _ICMPV6_ID_OFFSET      = _ICMPV6_HDR_OFFSET + 4
-_ICMPV6_IDENT_OFFSET   = _ICMPV6_HDR_OFFSET + 6
 _ICMPV6_PAYLOAD_OFFSET = _ICMPV6_HDR_OFFSET + 8
 _ICMPV6_ECHO_REQUEST   = 128
 _ICMPV6_ECHO_REPLY     = 129
@@ -145,17 +142,20 @@ class MultiPing(object):
                 self._unprocessed_targets.append(d)
 
         self._id_to_addr      = {}
-        self._remaining_ids   = None
+        self._remaining_ids   = []
         self._last_used_id    = None
         self._time_stamp_size = struct.calcsize("d")
 
         self._receive_has_been_called = False
         self._ipv6_address_present    = False
 
-        # use pid as identifier to filter receive pack from different
-        # process echo
+<<<<<<< HEAD
+        # use pid as identifier to filter receive pack from different	
+        # process echo	
         self.ident = os.getpid() & 0xffff
 
+=======
+>>>>>>> 668f5b333d902f3642cdb95ea80d68baf86a3bdd
         # Open an ICMP socket, if we weren't provided with one already
         if sock:
             self._sock = sock
@@ -233,7 +233,7 @@ class MultiPing(object):
         dummy_header = bytearray(
                             struct.pack(_ICMP_HDR_PACK_FORMAT,
                                         icmp_echo_request, 0, 0,
-                                        pkt_id, self.ident))
+                                        pkt_id, 0))
 
         # Calculate the checksum over the combined dummy header and payload
         checksum = self._checksum(dummy_header + payload)
@@ -244,7 +244,7 @@ class MultiPing(object):
         real_header = bytearray(
                             struct.pack(_ICMP_HDR_PACK_FORMAT,
                                         icmp_echo_request, 0, checksum,
-                                        pkt_id, self.ident))
+                                        pkt_id, 0))
 
         # Full packet consists of header plus payload
         full_pkt = real_header + payload
@@ -280,8 +280,12 @@ class MultiPing(object):
         if not self._receive_has_been_called:
             all_addrs = self._dest_addrs
         else:
+            # only get all ip address from previous result
             all_addrs = [a for (i, a) in list(self._id_to_addr.items())
                          if i in self._remaining_ids]
+
+            # clear _remaining_ids, will generate unique ID next time.
+            self._remaining_ids[:] = []
 
         if self._last_used_id is None:
             # Will attempt to continue at the last request ID we used. But if
@@ -294,6 +298,8 @@ class MultiPing(object):
         for addr in all_addrs:
             # Make a unique ID, wrapping around at 65535.
             self._last_used_id = (self._last_used_id + 1) & 0xffff
+            # add to _remaining_ids because each ID havn't received reply.
+            self._remaining_ids.append(self._last_used_id)
             # Remember the address for each ID so we can produce meaningful
             # result lists later on.
             self._id_to_addr[self._last_used_id] = addr
@@ -301,6 +307,7 @@ class MultiPing(object):
             # of the current time stamp. This is returned to us in the
             # response and allows us to calculate the 'ping time'.
             self._send_ping(addr, payload=struct.pack("d", time.time()))
+            time.sleep(0.3)
 
     def _read_all_from_socket(self, timeout):
         """
@@ -386,12 +393,6 @@ class MultiPing(object):
 
         # Continue with any remaining IDs for which we hadn't received an
         # answer, yet...
-        if self._remaining_ids is None:
-            # ... but if we don't have any stored yet, then we are just calling
-            # receive() for the first time afer a send. We initialize
-            # the list of expected IDs from all the IDs we created during the
-            # send().
-            self._remaining_ids = list(self._id_to_addr.keys())
 
         if len(self._remaining_ids) == 0:
             raise MultiPingError("No responses pending")
@@ -410,25 +411,32 @@ class MultiPing(object):
 
                 try:
                     pkt_id = None
-                    pkt_ident = None
                     if pkt[_ICMPV6_HDR_OFFSET] == _ICMPV6_ECHO_REPLY:
 
                         pkt_id = (pkt[_ICMPV6_ID_OFFSET] << 8) + \
                             pkt[_ICMPV6_ID_OFFSET + 1]
-                        pkt_ident = (pkt[_ICMPV6_IDENT_OFFSET] << 8) + \
+<<<<<<< HEAD
+                        pkt_ident = (pkt[_ICMPV6_IDENT_OFFSET] << 8) + \	
                             pkt[_ICMPV6_IDENT_OFFSET + 1]
+=======
+>>>>>>> 668f5b333d902f3642cdb95ea80d68baf86a3bdd
                         payload = pkt[_ICMPV6_PAYLOAD_OFFSET:]
 
                     elif pkt[_ICMP_HDR_OFFSET] == _ICMP_ECHO_REPLY:
 
                         pkt_id = (pkt[_ICMP_ID_OFFSET] << 8) + \
                             pkt[_ICMP_ID_OFFSET + 1]
-                        pkt_ident = (pkt[_ICMP_IDENT_OFFSET] << 8) + \
+<<<<<<< HEAD
+                        pkt_ident = (pkt[_ICMP_IDENT_OFFSET] << 8) + \	
                             pkt[_ICMP_IDENT_OFFSET + 1]
                         payload = pkt[_ICMP_PAYLOAD_OFFSET:]
 
-                    if pkt_ident == self.ident and \
-                       pkt_id in self._remaining_ids:
+                    if pkt_ident == self.ident and pkt_id in self._remaining_ids:
+=======
+                        payload = pkt[_ICMP_PAYLOAD_OFFSET:]
+
+                    if pkt_id in self._remaining_ids:
+>>>>>>> 668f5b333d902f3642cdb95ea80d68baf86a3bdd
                         # The sending timestamp was encoded in the echo request
                         # body and is now returned to us in the response. Note
                         # that network byte order doesn't matter here, since we
