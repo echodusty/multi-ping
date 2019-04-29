@@ -307,7 +307,6 @@ class MultiPing(object):
             # of the current time stamp. This is returned to us in the
             # response and allows us to calculate the 'ping time'.
             self._send_ping(addr, payload=struct.pack("d", time.time()))
-            time.sleep(0.3)
 
     def _read_all_from_socket(self, timeout):
         """
